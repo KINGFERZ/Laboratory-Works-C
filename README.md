@@ -1,3 +1,5 @@
+begin lab – Sum of array elements
+
 0 lab - Converting numbers from one number system to another
 
 1st lab - Subsrting search
