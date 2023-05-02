@@ -32,8 +32,14 @@ begin lab – Sum of array elements
 • 0 - Prim's algorithm / 
 • 1 - Kruskal's algorithm
 
+
 9th lab- Dijkstra's Shortest Path algorithm
 •
+
 10th lab - Minimum convex shell Graham's algorithm
 •
+
 11th lab - Knapsack problem
+
+
+
