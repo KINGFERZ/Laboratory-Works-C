@@ -6,9 +6,9 @@ begin lab – Sum of array elements
 
 1st lab - Subsrting search
 
-• 0 - Boyer–Moore
-• 1 - Rabin–Karp
-• 2 - Knutt-Morris-Pratt
+• 0 - Boyer–Moore  
+• 1 - Rabin–Karp  
+• 2 - Knutt-Morris-Pratt  
 
 2nd lab - Permutations
 
@@ -23,16 +23,16 @@ begin lab – Sum of array elements
 
 6th lab - Height of trees 
 
-• 0 - AVL Tree 
-• 1 - Red-Black Tree 
-• 2 - B-Tree 
+• 0 - AVL Tree  
+• 1 - Red-Black Tree   
+• 2 - B-Tree  
 
 7th lab - Topological sort
 
 8th lab - Minimum spanning tree
 
-• 0 - Prim's algorithm
-• 1 - Kruskal's algorithm
+• 0 - Prim's algorithm  
+• 1 - Kruskal's algorithm  
 
 9th lab- Dijkstra's Shortest Path algorithm
 
