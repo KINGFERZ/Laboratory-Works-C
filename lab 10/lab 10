@@ -1,0 +1,173 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#define MAX_N 100000
+#define ACCURACY pow(10, -6)
+
+typedef struct {
+    int x, y;
+} point;
+
+void Print_Points(point * points, int res_size, int* result){
+    for (int i = 0; i < res_size; i++) {
+        printf("%d %d\n", points[result[i]].x, points[result[i]].y);
+    }
+}
+
+/* Rotate - function that returns where the point C lies relative to the vector AB:
+ + left
+ - right
+ */
+double Rotate (point a, point b, point c) {
+    return ((double)b.x - a.x)*((double)c.y - b.y) - ((double)b.y-a.y)*((double)c.x - b.x);
+}
+
+void swap (int *a, int *b) {
+    int buf = *a;
+    *a = *b;
+    *b = buf;
+}
+
+void QuickSort(int *index_array, int first, int last, point *points) {
+    if (first >= last) return;
+    int left = first;
+    int right = last;
+    point low = points[index_array[0]];
+    point mid = points[index_array[(left + right) / 2]];
+    while (left <= right) {
+        while (1) {
+            if (Rotate(low, mid, points[index_array[left]]) >= 0){
+                break;
+            }
+            left++;
+        }
+        while (Rotate(low, mid, points[index_array[right]]) > 0){
+            right--;
+        }
+        if (left <= right){
+            swap(index_array + left, index_array + right);
+            left++;
+            right--;
+        }
+    }
+    QuickSort(index_array, first, right, points);
+    QuickSort(index_array, left, last, points);
+}
+
+void Convex_hull_graham(point *points, int count_of_points, int *result, int* result_size) {
+    int *index_array = malloc((count_of_points + 1) * sizeof(int));
+
+    int flag = 1;  //flag to track the rotation
+
+    for (int i = 0; i < count_of_points; i++){
+        index_array[i] = i;
+    }
+
+    for (int i = 1; i < count_of_points; i++){
+        if ((points[index_array[i]].x < points[index_array[0]].x) ||
+        (points[index_array[i]].x == points[index_array[0]].x && points[index_array[i]].y < points[index_array[0]].y)) {
+            swap(index_array + i, index_array);
+        }
+    }
+
+    index_array[count_of_points] = index_array[0];
+    QuickSort(index_array, 1, count_of_points - 1, points);
+
+    for (int i = 0; i < count_of_points; i++) {
+        result[0] = index_array[0];
+        result[1] = index_array[1];
+        int j = 2;
+        if (Rotate(points[result[j-2]], points[result[j-1]], points[index_array[i]]) != 0) {
+            flag = 0;
+            break;
+        }
+    }
+
+    if (count_of_points == 1) {
+        result[0] = index_array[0];
+        *result_size = 1;
+    }
+
+    else if (flag == 1){ // if all has rotation 0
+        if (points[index_array[0]].x == points[index_array[count_of_points - 1]].x) {
+            float max_y = ACCURACY;
+            int max_y_ind = 0;
+            for (int i = 1; i < count_of_points; i++) {
+                if (points[index_array[i]].y > max_y) {
+                    max_y = points[index_array[i]].y;
+                    max_y_ind = i;
+                }
+            }
+            result[0] = index_array[0];
+            *result_size = 2;
+            result[1] = index_array[max_y_ind];
+        }
+        else {
+            float max_x = ACCURACY;
+            int max_x_ind = 0;
+            for (int i = 1; i < count_of_points; i++) {
+                if (points[index_array[i]].x > max_x) {
+                    max_x = points[index_array[i]].x;
+                    max_x_ind = i;
+                }
+            }
+            result[0] = index_array[0];
+            *result_size = 2;
+            result[1] = index_array[max_x_ind];
+        }
+    }
+    else {
+        result[0] = index_array[0];
+        result[1] = index_array[1];
+        int j = 2;
+        for (int i = 2; i < count_of_points + 1; i++) {
+            while (j > 1) {
+                point A = points[result[j - 2]];
+                point B = points[result[j - 1]];
+                point C = points[index_array[i]];
+                double rot = Rotate(A, B, C);
+                if (rot > 0) {
+                    break;
+                }
+                j--;
+            }
+            result[j] = index_array[i];
+            j++;
+        }
+        *result_size = (j > 2) ? (j - 1) : j; // If there are more than two dots push the last one
+    }
+    free(index_array);
+}
+
+void Free(point * Points, int *result){
+    free(Points);
+    free(result);
+}
+
+int main () {
+    int count_of_points;
+    if (!scanf("%d", &count_of_points) || count_of_points < 0 || count_of_points > MAX_N) {
+        printf("bad number of points");
+        return 0;
+    }
+    if(count_of_points==0){
+        return 0;
+    }
+
+    point *Points=malloc(count_of_points*sizeof(point));
+    int *result=malloc((count_of_points+1)*sizeof(int));
+
+    int res_len = 0;
+
+    for (int i = 0; i < count_of_points; i++) {
+        if (scanf("%d %d", &Points[i].x, &Points[i].y) != 2) {
+            printf("bad number of lines");
+            Free(Points, result);
+            return 0;
+        }
+    }
+    Convex_hull_graham(Points, count_of_points, result, &res_len);
+    Print_Points(Points, res_len, result);
+    Free(Points, result);
+}
