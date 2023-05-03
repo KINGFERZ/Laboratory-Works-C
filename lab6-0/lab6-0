@@ -1,0 +1,109 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+
+typedef struct AVLTree {
+    int val, height;
+    struct AVLTree *left;
+    struct AVLTree *right;
+} Tree;
+
+unsigned char height(Tree *pointer) {
+    return pointer ? pointer->height : 0;
+}
+
+int balance_factor(Tree *pointer) {
+    return height(pointer->right) - height(pointer->left);
+}
+
+void fix_height(Tree *pointer) {
+    int height_left = height(pointer->left);
+    int height_right = height(pointer->right);
+    if (height_left > height_right){
+        pointer->height = height_left+1;
+    }
+    else{
+        pointer->height = height_right+1;
+    }
+}
+
+Tree *LeftRotation(Tree *pointer) { //
+    Tree *p = pointer-> right;
+    pointer->right=p->left;
+    p->left=pointer;
+    fix_height(pointer);
+    fix_height(p);
+    return p;
+}
+
+Tree *RightRotation(Tree *pointer) {
+    Tree *q = pointer->left;
+    pointer->left = q->right;
+    q->right = pointer;
+    fix_height(pointer);
+    fix_height(q);
+    return q;
+}
+
+Tree *Balancing(Tree *pointer) {
+    fix_height(pointer);
+    if (balance_factor(pointer) == 2) {
+        if (balance_factor(pointer->right) < 0) {
+            pointer->right = RightRotation(pointer->right);
+        }
+        return LeftRotation(pointer);
+    }
+    if (balance_factor(pointer) == -2) {
+        if (balance_factor(pointer->left) > 0) {
+            pointer->left = LeftRotation(pointer->left);
+        }
+        return RightRotation(pointer);
+    }
+    return pointer;
+}
+
+Tree *Creation(Tree *pointer,int val) {
+    pointer->left = NULL;
+    pointer->right = NULL;
+    pointer->val = val;
+    pointer->height = 1;
+    return pointer;
+}
+
+Tree *insert(Tree *pointer, Tree * Node) {
+    if (pointer == NULL) {
+        pointer = Node;
+        return pointer;
+    }
+    if (Node->val < pointer->val) {
+        pointer->left = insert(pointer->left, Node);
+    } else {
+        pointer->right = insert(pointer->right, Node);
+    }
+    return Balancing(pointer);
+}
+
+int main() {
+    int val = 0, count_of_nodes = 0;
+    if (!scanf("%d", &count_of_nodes)) {
+        return 0;
+    }
+    if (count_of_nodes == 0) {
+        printf("0");
+        return 0;
+    }
+    Tree *pointer = (Tree *)malloc(count_of_nodes * sizeof(Tree));
+    assert(pointer);
+    Tree *root = NULL;
+    for (int i = 0; i < count_of_nodes; i++) {
+        if (scanf("%d", &val) == 0) {
+            return 0;
+        }
+        Tree * Node = Creation(&pointer[i], val);
+        root = insert(root, Node);
+    }
+    printf("%d", root->height);
+    free(pointer);
+
+    return 0;
+}
