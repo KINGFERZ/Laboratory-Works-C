@@ -1,0 +1,189 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+#define MAX_SIZE 2000000
+#define MAX_ORDER 2000
+
+typedef enum exit_codes {
+    BAD_INPUT,
+    SUCCESS
+} exit_codes;
+
+char *exit_message[] = {
+        "bad input",
+        "out_of_memory"
+};
+
+typedef struct b_node {
+    int val_num;
+    int *values;
+    bool is_leaf;
+    struct b_node **children;
+} b_node;
+
+typedef struct b_tree {
+    int order;
+    int height;
+    b_node *root;
+} b_tree;
+
+b_node *creation(b_tree *tree) {
+    b_node *node = malloc(sizeof(b_node));
+    node->values = malloc((2 * tree->order - 1) * sizeof(int));
+
+    node->val_num = 0;
+    node->is_leaf = true;
+    node->children = NULL;
+
+    return node;
+}
+
+void creation_of_children(b_node *node, b_tree *tree) {
+    node->is_leaf = false;
+    node->children = malloc(2 * tree->order * sizeof(b_node *));
+}
+
+bool is_full(b_node *node, b_tree *tree) {
+    if (node->val_num == 2 * tree->order - 1) {
+        return true;
+    }
+    return false;
+}
+
+int get_val_index(b_node *node, int val) {
+    int left = 0, right = node->val_num - 1;
+    while (left <= right) {
+        int mid = (left + right) / 2;
+        if (val <= node->values[mid]) {
+            right = mid - 1;
+        }
+        if (val >= node->values[mid]) {
+            left = mid + 1;
+        }
+    }
+    return right + 1;
+}
+
+void move_value_arrays(b_node *old, int index_old, b_node *new, int index_new) {
+    int move_index = new->val_num - index_new;
+    memmove(new->values + index_new, old->values + index_old, move_index * sizeof(int));
+    if (old->is_leaf == false) {
+        memmove(new->children + index_new, old->children + index_old, (move_index + 1) * sizeof(b_node *));
+    }
+}
+
+void separation(int move_index, b_node *parent, b_tree *tree){
+    b_node *old = parent->children[move_index];
+    b_node *new = creation(tree);
+
+    if(old->is_leaf == false){
+        creation_of_children(new, tree);
+    }
+
+    new->val_num = tree->order - 1;
+    old->val_num = tree->order - 1;
+
+    move_value_arrays(old, tree->order, new, 0);
+
+    parent->val_num++;
+    move_value_arrays(parent, move_index, parent, move_index+1);
+    parent->values[move_index] = old->values[tree->order - 1];
+    parent->children[move_index + 1] = new;
+}
+
+void insertion_if_node(b_node *node, int val){
+    int index = get_val_index(node, val);
+    node->val_num++;
+    move_value_arrays(node, index, node, index + 1);
+    node->values[index] = val;
+}
+
+void not_full_node(b_tree *tree, b_node *node, int val){
+    if(node->is_leaf == true){
+        insertion_if_node(node, val);
+    }
+    else{
+        int child_index = get_val_index(node, val);
+        if(is_full(node->children[child_index], tree)){
+            separation(child_index, node, tree);
+        }
+        int new_index = get_val_index(node, val);
+        not_full_node(tree, node->children[new_index], val);
+    }
+}
+
+void insertion_in_tree(b_tree *tree, int val){
+    if(is_full(tree->root, tree) == true){
+        b_node *new_root = creation(tree);
+        creation_of_children(new_root, tree);
+        new_root->children[0] = tree->root;
+        separation(0, new_root, tree);
+        tree->root = new_root;
+        tree->height++;
+    }
+    not_full_node(tree, tree->root, val);
+}
+
+void free_tree(b_node *root){
+    free(root->values);
+    if(root->is_leaf == true){
+        free(root);
+        return;
+    }
+    else{
+        for(int i = 0; i <= root->val_num; i++){
+            free_tree(root->children[i]);
+        }
+    }
+    free(root->children);
+    free(root);
+}
+
+exit_codes check_function(int order, int num_of_val) {
+    if (order < 2 || order > MAX_ORDER) {
+        return BAD_INPUT;
+    }
+    if (num_of_val < 0 || num_of_val > MAX_SIZE) {
+        return BAD_INPUT;
+    }
+    return SUCCESS;
+}
+
+int main() {
+    int order = 0, num_of_val = 0, val = 0;
+
+    if (scanf("%d %d", &order, &num_of_val) != 2) {
+        printf("%s", exit_message[BAD_INPUT]);
+        return 0;
+    }
+
+    exit_codes res = check_function(order, num_of_val);
+    if (res != SUCCESS) {
+        printf("%s", exit_message[res]);
+        return 0;
+    }
+
+    if (num_of_val == 0) {
+        printf("0");
+        return 0;
+    }
+
+    b_tree tree = {order, 0, NULL};
+    b_node *root = creation(&tree);
+    tree.root = root;
+
+    for (int i = 0; i < num_of_val; i++) {
+        if (scanf("%d", &val) != 1) {
+            free_tree(tree.root);
+            printf("%s", exit_message[BAD_INPUT]);
+            return 0;
+        }
+        insertion_in_tree(&tree, val);
+    }
+    printf("%d\n", tree.height + 1);
+    free_tree(tree.root);
+
+    return 0;
+}
