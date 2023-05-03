@@ -1,0 +1,95 @@
+#include <stdio.h>
+#include <string.h>
+
+#define SHIFT_CHARS 256
+#define TEMPLATE_SIZE 16
+#define BUFFER_SIZE 4096
+
+int max(int a, int b) {
+    if (a > b) {
+        return a;
+    } else {
+        return b;
+    }
+}
+
+// На сколько смещаем подстроку
+
+void stop_char(unsigned char *template, int size, unsigned char *chars_shift) {
+    int last_char_match_counter = 0;
+    for (int i = 0; i < SHIFT_CHARS; i++) {
+        chars_shift[i] = size;
+    }
+    for (int i = 0; i < size - 1; i++) {
+        if (template[i] == template[size - 1]) {
+            last_char_match_counter += 1;
+        }
+        chars_shift[(int)template[i]] = size - i - 1;
+    }
+    if (last_char_match_counter == 0) {
+        chars_shift[(int)template[size - 1]] = size;
+    }
+}
+
+int boyer_mur(unsigned char *buf, unsigned char *template, unsigned char *chars_shift, long *global_shift) {
+    FILE *out = fopen("out.txt", "a+");
+    int buf_len = (int) strlen((char *) buf);
+    int template_len = (int) strlen((char *) template);
+    long shift = 0;
+    while (shift <= (buf_len - template_len)) {
+        int mismatch_counter = template_len - 1;
+        while (mismatch_counter >= 0 &&
+               template[mismatch_counter] == buf[shift + mismatch_counter]) {
+            fprintf(out, "%ld ", *global_shift + shift + mismatch_counter + 1);
+            mismatch_counter--;
+        }
+        if (mismatch_counter < 0) {
+            shift += (shift + template_len < buf_len) ? template_len : 1;
+        } else {
+            fprintf(out, "%ld ", *global_shift + shift + mismatch_counter + 1);
+            shift += max(1, chars_shift[(int) buf[shift + template_len - 1]]);
+        }
+    }
+    *global_shift += shift;
+    fclose(out);
+    return 0;
+}
+
+
+int main() {
+    unsigned char template[TEMPLATE_SIZE + 2], buf[BUFFER_SIZE + 2], chars_shift[SHIFT_CHARS];
+    long global_shift = 0;
+    int buffer_len;
+    unsigned char letter_of_template;
+    FILE *input = fopen("in.txt", "r");
+
+    for (int i = 0; i <= TEMPLATE_SIZE; i++) {
+        if (fread(&letter_of_template, sizeof(char), 1, input)) {
+            if (letter_of_template == '\n') {
+                template[i] = '\0';
+                break;
+            }
+            template[i] = letter_of_template;
+        }
+    }
+
+    stop_char(template, (int) strlen((char *) template), chars_shift);
+    buffer_len = fread(buf, sizeof(char), BUFFER_SIZE, input);
+
+    if (buffer_len == 0) {
+        fclose(input);
+        return 0;
+    }
+    while (buffer_len == BUFFER_SIZE) {
+        buf[BUFFER_SIZE] = '\0';
+        boyer_mur(buf, template, chars_shift, &global_shift);
+        memset(buf, 0, sizeof(buf));
+        buffer_len = fread(buf, sizeof(char), BUFFER_SIZE, input);
+    }
+    buf[buffer_len] = '\0';
+
+    boyer_mur(buf, template, chars_shift, &global_shift);
+
+    fclose(input);
+    return 0;
+}
