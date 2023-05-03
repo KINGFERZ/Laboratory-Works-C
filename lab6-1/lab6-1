@@ -1,0 +1,122 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <assert.h>
+
+#define uc unsigned char
+#define RED 0
+#define BLACK 1
+
+#define LEFT 0
+#define RIGHT 1
+
+typedef struct TNode {
+    int val;
+    uc color;
+    struct TNode *child[2];
+}Node;
+
+Node *creation(Node *pointer, int val) {
+    pointer->val = val;
+    pointer->color = RED;
+    pointer->child[LEFT] = NULL;
+    pointer->child[RIGHT] = NULL;
+    return pointer;
+}
+
+void color_change(Node *pointer) { // changing by XOR
+    pointer->color = pointer->color ^ 1;
+    pointer->child[LEFT]->color = pointer->child[LEFT]->color ^ 1;
+    pointer->child[RIGHT]->color = pointer->child[RIGHT]->color ^ 1;
+}
+
+bool red(Node *pointer) {
+    if (pointer == NULL) {
+        return false;
+    }
+    return pointer->color == RED;
+}
+
+Node *rotation(Node *pointer, bool direction) { // rotation Node q using the direction
+    Node *q = pointer->child[!direction];
+    pointer->child[!direction] = q->child[direction];
+    q->child[direction] = pointer;
+    q->color = pointer->color;
+    pointer->color = RED;
+
+    return q;
+}
+
+Node *double_rotation(Node *pointer, bool direction) {
+    pointer->child[!direction] = rotation(pointer->child[!direction], !direction);
+    return rotation(pointer, direction);
+}
+
+Node *insert_fix(Node *pointer, bool direction) {
+    if (red(pointer->child[direction])) {
+
+        if (red(pointer->child[!direction])) {    // both children are RED => change the color
+
+            if (red(pointer->child[direction]->child[direction])
+                || red(pointer->child[direction]->child[!direction])) {
+                color_change(pointer);
+            }
+        } else {                                         // both children aren't RED
+            if (red(pointer->child[direction]->child[direction])) {
+                pointer = rotation(pointer, !direction);
+            } else if (red(pointer->child[direction]->child[!direction])) {
+                pointer = double_rotation(pointer, !direction);
+            }
+        }
+    }
+    return pointer;
+}
+
+Node * insert(Node *root, Node* node, int val){
+    if(root==NULL){
+        root=node;
+        return root;
+    }
+    bool direction = (val > root->val);  // 1 - right, 0 - left
+    root->child[direction] = insert(root->child[direction], node, val);
+    root= insert_fix(root, direction);
+    return root;
+}
+
+int height(Node *pointer) {
+    int height = 0;
+    while (pointer!=NULL) {
+        if (pointer->color == BLACK) {
+            height++;
+        }
+        pointer = pointer->child[LEFT];
+        if (pointer==NULL) {             // child may be NULL pointer => BLACK color
+            height++;
+        }
+    }
+    return height;
+}
+
+
+int main() {
+    int count_of_nodes, val;
+    if (!scanf("%d", &count_of_nodes)) {
+        return 0;
+    }
+    
+    Node *root = NULL;
+    Node *pointer = (Node *) malloc(count_of_nodes * sizeof(Node));
+    assert(pointer);
+
+    for (int i = 0; i < count_of_nodes; i++) {
+        if (scanf("%d", &val) == 0) {
+            free(pointer);
+            return 0;
+        }
+        Node *Node = creation(&pointer[i], val);
+        root = insert(root, Node, val);
+        root->color = BLACK;
+    }
+    printf("%d", height(root));
+    free(pointer);
+}
