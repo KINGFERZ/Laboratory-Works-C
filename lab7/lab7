@@ -1,0 +1,142 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#define MaxSize 2000
+#define Length 250 // 2000:8==250
+#define MaxShift 7
+
+ typedef enum GraphColors{
+    BLACK = 2,
+    GREY = 1
+}Colors;
+
+typedef struct Stack{
+    int array[MaxSize];
+    int stackLen;
+}Stack;
+
+typedef struct Graph{
+    char matrix[MaxSize][Length]; // adjacency matrix
+    Stack *stack;
+    char visited[MaxSize];
+}Graph;
+
+Graph *MakeGraph(Graph *g){
+    g = calloc(1, sizeof(Graph));
+    g->stack = calloc(1, sizeof(Stack));
+    return g;
+}
+
+void Free(Graph *g){
+    free(g->stack);
+    free(g);
+}
+
+int CheckFunction(int numOfVertices, int numOfEdges){
+        if (numOfVertices < 0 || numOfVertices > MaxSize){
+            printf("bad number of vertices");
+            return 0;
+        }
+        if (numOfEdges < 0 || numOfEdges > (numOfVertices * (numOfVertices - 1) / 2)){
+            printf("bad number of edges");
+            return 0;
+        }
+        return 1;
+}
+
+int CheckVertexes(int vertex1, int vertex2, int N){
+    if (vertex1 < 1 || vertex1 > N || vertex2 < 1 || vertex2 > N){
+        printf("bad vertex");
+        return 0;
+    }
+    return 1;
+}
+
+void Push(Stack *stack, int vertex){
+    stack->array[stack->stackLen++] = vertex;
+}
+
+void Pop(Stack *stack){
+    printf("%i ", stack->array[stack->stackLen - 1]);
+    stack->stackLen--;
+}
+
+void AddEdge(char *matrix, int x, int y) {
+    int cellNum = y / 8; // char number
+    int bitNum = y % 8; // bit of number
+    matrix[x*Length + cellNum] |= (1 << (MaxShift - bitNum));
+}
+
+int CheckConnection(char *matrix, int line, int columnNum, int numBit){
+    if ( matrix[line*Length + columnNum] & (1 << (MaxShift - numBit)) ){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
+
+void DFS(Graph *graph, int start, char *arr){
+    graph->visited[start] = GREY;
+    arr[start] = GREY;
+
+    for (int i = 0; i < Length; ++i){
+        for (int j = 0; j < 8; ++j){
+            if (CheckConnection(*graph->matrix, start, i, j) == 1){
+                int newStart = i * 8 + j;
+                if ( !graph->visited[newStart] && arr[newStart] != 1){
+                    DFS(graph, newStart, arr);
+                }
+                else if (arr[newStart] == 1){
+                    printf("impossible to sort");
+                    Free(graph);
+                    exit(0);
+                }
+            }
+        }
+    }
+    Push(graph->stack, start + 1);
+    arr[start] = BLACK;
+}
+
+int main() {
+    int numOfEdges; // M
+    int numOfVertices; //N
+    if (scanf("%i ", &numOfVertices) == EOF){
+        printf("bad number of lines");
+        return 0;
+    }
+    if (scanf("%i", &numOfEdges) == EOF){
+        printf("bad number of lines");
+        return 0;
+    }
+    CheckFunction(numOfVertices, numOfEdges);
+
+    Graph *graph = NULL;
+    graph = MakeGraph(graph);
+
+    int x, y;
+    for (int i = 0; i < numOfEdges; ++i){
+        if (scanf("%i %i", &x, &y) == EOF && numOfEdges != 0){
+            printf("bad number of lines");
+            Free(graph);
+            return 0;
+        }
+        if(CheckVertexes(x, y, numOfVertices)==1) {
+            AddEdge(*graph->matrix, x - 1, y - 1);
+        }
+    }
+    char arr[MaxSize];
+    for (int i = 0; i < numOfVertices; ++i){
+        if (!graph->visited[i]){
+            memset(arr, 0, MaxSize);
+            DFS(graph, i, arr);
+        }
+    }
+
+    while (graph->stack->stackLen != 0){
+        Pop(graph->stack);
+    }
+    Free(graph);
+}
