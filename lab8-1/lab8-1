@@ -1,0 +1,178 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+
+#define MAXSIZE 5000
+
+typedef struct edge{
+    int x;
+    int y;
+}edge;
+
+typedef enum {
+    BAD_LENGTH,
+    BAD_LINES,
+    BAD_VERTICES,
+    BAD_VERTEX,
+    BAD_EDGES,
+    NO_SPAN_TREE,
+    SUCCESS
+}exit_codes;
+
+char* exit_message[] = {
+        "bad length",
+        "bad number of lines",
+        "bad number of vertices",
+        "bad vertex",
+        "bad number of edges",
+        "no spanning tree"
+};
+
+typedef enum{
+    VERTEX_IN_MST,
+    VERTEX_NOT_IN_MST
+}vertex_position;
+
+void add_edge(unsigned int *adjacency_matrix, int x, int y, unsigned long long length, int num_of_vertices){
+    adjacency_matrix[x * num_of_vertices + y] = length;
+}
+
+exit_codes graph_read(unsigned int *adjacency_matrix, int num_of_vertices, int num_of_edges){
+    int x, y;
+    unsigned long long length;
+    for(int i = 0; i < num_of_edges; i++){
+        if(scanf("%d %d %llu", &x, &y, &length) !=3){
+            return BAD_LINES;
+        }
+        if(x < 1 || x > num_of_vertices || y < 1 || y > num_of_vertices){
+            return BAD_VERTEX;
+        }
+        if(length > INT_MAX){
+            return BAD_LENGTH;
+        }
+        add_edge(adjacency_matrix, x - 1, y - 1, length, num_of_vertices);
+        add_edge(adjacency_matrix, y - 1, x - 1, length, num_of_vertices);
+    }
+    return SUCCESS;
+}
+
+exit_codes check_input(int num_of_vertices, int num_of_edges){
+    if(num_of_vertices < 0 || num_of_vertices > MAXSIZE){
+        return BAD_VERTICES;
+    }
+    if(num_of_edges < 0 || num_of_edges > (num_of_vertices * (num_of_vertices - 1)/2)){
+        return BAD_EDGES;
+    }
+    if(num_of_edges == 0 && num_of_vertices !=1){
+        return NO_SPAN_TREE;
+    }
+    if(num_of_edges < (num_of_vertices - 1)){
+        return NO_SPAN_TREE;
+    }
+    return SUCCESS;
+}
+
+int find_min_edge(unsigned int *distance_to_mst, int num_of_vertices){
+    unsigned int min = distance_to_mst[0];
+    int index = 0;
+    for(int i = 1; i < num_of_vertices; i++){
+        if(distance_to_mst[i] < min){
+            min = distance_to_mst[i];
+            index = i;
+        }
+    }
+    return index;
+}
+
+void free_prim(unsigned int *adjacency_matrix, int *indexes, vertex_position *vertex_in_mst){
+    free(adjacency_matrix);
+    free(indexes);
+    free(vertex_in_mst);
+}
+
+exit_codes prim_algorithm(unsigned int *adjacency_matrix, edge *mst, int num_of_vertices){
+    unsigned int *distance_to_mst = malloc(num_of_vertices * sizeof(unsigned int));
+    int *indexes = malloc(num_of_vertices * sizeof(int));
+    vertex_position *vertex_in_mst = malloc(num_of_vertices * sizeof(vertex_position));
+
+    for(int i = 0; i < num_of_vertices; i++){
+        distance_to_mst[i] = (unsigned int)INT_MAX + 1;
+        vertex_in_mst[i] = VERTEX_NOT_IN_MST;
+    }
+
+    vertex_in_mst[0] = VERTEX_IN_MST;
+    int edge_counter = 0, current_vertex = 0;
+    unsigned int current_cell;
+    for(int i = 0; i < num_of_vertices - 1; i++){
+        for(int j = 1; j < num_of_vertices; j++){
+            current_cell = adjacency_matrix[current_vertex * num_of_vertices + j];
+            if(current_cell < distance_to_mst[j] && current_cell != 0 && distance_to_mst[j]!=UINT_MAX){
+                distance_to_mst[j] = current_cell;
+                indexes[j] = current_vertex;
+                vertex_in_mst[j] = VERTEX_IN_MST;
+            }
+        }
+        distance_to_mst[current_vertex] = UINT_MAX;
+        int new_vertex = find_min_edge(distance_to_mst, num_of_vertices);
+        mst[edge_counter].x = indexes[new_vertex] + 1;
+        mst[edge_counter].y = new_vertex + 1;
+        current_vertex = new_vertex;
+        edge_counter++;
+    }
+
+    for(int i = 0; i < num_of_vertices; i++){
+        if(vertex_in_mst[i] == VERTEX_NOT_IN_MST){
+            free_prim(distance_to_mst, indexes, vertex_in_mst);
+            return NO_SPAN_TREE;
+        }
+    }
+    free_prim(distance_to_mst, indexes, vertex_in_mst);
+    return SUCCESS;
+}
+
+void free_memory(unsigned int *adjacency_matrix, edge *mst){
+    free(adjacency_matrix);
+    free(mst);
+}
+
+void print_mst(edge *mst, int num_of_vertices){
+    for(int i = 0; i < num_of_vertices - 1; i++){
+        printf("%d %d\n", mst[i].x, mst[i].y);
+    }
+}
+
+int main(){
+    int num_of_vertices = 0, num_of_edges = 0;
+
+    if(scanf("%d %d", &num_of_vertices, &num_of_edges) != 2){
+        printf("%s", exit_message[BAD_LINES]);
+        return 0;
+    }
+
+    exit_codes res = check_input(num_of_vertices, num_of_edges);
+    if(res != SUCCESS){
+        printf("%s", exit_message[res]);
+        return 0;
+    }
+
+    unsigned int *adjacency_matrix = calloc(num_of_vertices * num_of_vertices, sizeof(unsigned int));
+    edge *mst = malloc((num_of_vertices - 1)*sizeof(edge));
+
+    res = graph_read(adjacency_matrix, num_of_vertices, num_of_edges);
+    if(res != SUCCESS){
+        printf("%s", exit_message[res]);
+        free_memory(adjacency_matrix, mst);
+        return 0;
+    }
+
+    res = prim_algorithm(adjacency_matrix, mst, num_of_vertices);
+    if(res != SUCCESS){
+        printf("%s", exit_message[res]);
+        free_memory(adjacency_matrix, mst);
+        return 0;
+    }
+
+    print_mst(mst, num_of_vertices);
+    free_memory(adjacency_matrix, mst);
+    return 0;
+}
