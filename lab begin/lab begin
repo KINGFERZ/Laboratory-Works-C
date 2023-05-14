@@ -1,1 +1,79 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
 
+typedef enum exit_codes{
+    BAD_INPUT,
+    OVERFLOW,
+    SUCCESS
+}exit_codes;
+
+char *exit_message[] = {
+        "bad input",
+        "overflow"
+};
+
+exit_codes check_input(int size){
+    if(size < 1 || size > 10){
+        return BAD_INPUT;
+    }
+    return SUCCESS;
+}
+
+exit_codes read_array(long long *array,long long val, int size){
+    for(int i = 0; i < size; i++){
+        if(scanf("%lld", &val) != 1){
+            return BAD_INPUT;
+        }
+        if(val > INT_MAX || val < INT_MIN){
+            return BAD_INPUT;
+        }
+        array[i] = val;
+    }
+    return SUCCESS;
+}
+
+exit_codes check_sum(long long sum){
+    if(sum > INT_MAX || sum < INT_MIN){
+        return OVERFLOW;
+    }
+    return SUCCESS;
+}
+
+int main(){
+    int size = 0;
+    if(scanf("%d", &size) != 1){
+        printf("%s", exit_message[BAD_INPUT]);
+        return 0;
+    }
+
+    exit_codes res = check_input(size);
+    if(res != SUCCESS){
+        printf("%s", exit_message[res]);
+        return 0;
+    }
+
+    long long *array = malloc(size * sizeof(long long));
+    long long val = 0, sum = 0;
+
+    res = read_array(array, val, size);
+    if(res != SUCCESS){
+        printf("%s", exit_message[res]);
+        free(array);
+        return 0;
+    }
+
+    for(int i = 0; i < size; ++i){
+        sum += array[i];
+        res = check_sum(sum);
+        if(res != SUCCESS){
+            printf("%s", exit_message[res]);
+            free(array);
+            return 0;
+        }
+    }
+
+    printf("%lld", sum);
+    free(array);
+    return 0;
+}
