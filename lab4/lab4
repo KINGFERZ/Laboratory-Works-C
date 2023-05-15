@@ -6,17 +6,18 @@
 #define MAX_STACK 2048
 #define MAX_EXPRESSION 2048
 
-void SyntaxError(){
+int SyntaxError(){
     printf("syntax error");
     exit(0);
 }
 
-void DivisionByZero(){
+
+int DivisionByZero(){
     printf("division by zero");
-    exit(0);
+    return 0;
 }
 
-typedef struct Stack{ // Стэк операторов
+typedef struct Stack{
     char stack[MAX_STACK];
     int stack_len;
     int priority[MAX_STACK];
@@ -56,7 +57,7 @@ void CountBrackets(int *countBrackets, char *in, int i){
     }
 }
 
-int DefinePriority(char *in, int i){ 
+int DefinePriority(char *in, int i){
     int priority = 0;
     if (in[i] == '+' || in[i] == '-') {
         priority = 0;
@@ -139,7 +140,7 @@ void PolishNotation(char *in, int inLen, int *countBrackets, Stack *st, char *ex
         }
         else{
             int digit = 0;
-            exp[eLen] = 'a'; // the place in the expression where the number should stand
+            exp[eLen] = 'a';                  //the place in the expression where the number should stand
             while (isdigit(in[i])){
                 digit *= 10;
                 digit += CharToInt(in[i]);
@@ -158,7 +159,7 @@ void PolishNotation(char *in, int inLen, int *countBrackets, Stack *st, char *ex
     *countBrackets = cBrackets;
 }
 
-int Calculations(int exp_len, char *exp, int *digits){ 
+int Calculations(int exp_len, char *exp, int *digits){
     int pos = 0;
     for (int i = 0; i < exp_len; i++){
         if (exp[i] == '+' || exp[i] == '-' || exp[i] == '*' || exp[i] == '/'){
@@ -176,6 +177,7 @@ int Calculations(int exp_len, char *exp, int *digits){
             else if (exp[i] == '/'){
                 if (digits[second] == 0){
                     DivisionByZero();
+                    return 0;
                 }
                 digits[i] = digits[first] / digits[second];
             }
@@ -189,12 +191,13 @@ int Calculations(int exp_len, char *exp, int *digits){
 }
 int main(){
 
-    char in[MAX_EXPRESSION]; // input data
-    char exp[MAX_EXPRESSION]; // final expression
-    int digits[MAX_EXPRESSION]; // array with numbers from input data
-    int exp_len = 0; 
+    char in[MAX_EXPRESSION]; // Input Data
+    char exp[MAX_EXPRESSION]; // Final expression
+    int digits[MAX_EXPRESSION]; // Array with numbers from data array
+    int exp_len = 0;
     if (fgets(in, MAX_EXPRESSION, stdin) == NULL){
         SyntaxError();
+        return 0;
     }
     int inLen = strlen(in) - 1;
     if (inLen <= 0){
@@ -211,6 +214,6 @@ int main(){
 
     CheckCountBrackets(countBrackets);
 
-    int pos = Calculations(exp_len, exp, digits); // pos - position in array where the answer is stored
-    printf("%d", digits[pos]);
+    int pos = Calculations(exp_len, exp, digits);
+    printf("%i", digits[pos]);
 }
