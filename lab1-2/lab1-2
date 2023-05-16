@@ -1,139 +1,141 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
-#define BUFF_SIZE 1040
-#define MAX_SUB_LEN 16
+#define BUFF_SIZE 4096
+#define TEMPLATE_SIZE 17
 
-void get_sub_str(unsigned char *str, FILE *file) {
-    for (unsigned int i = 0; i < MAX_SUB_LEN + 1; i++) {
-        unsigned char chr = fgetc(file);
-        if (chr != '\n') {
-            str[i] = chr;
-        } else {
-            str[i] = '\0';
-            break;
-        }
+typedef unsigned char uc;
+
+int read_template(uc *template, FILE *in){
+    int length = 0;
+    uc get;
+    while (fread(&get, sizeof(uc), 1, in) == 1 && get != '\n')
+    {
+        template[length] = get;
+        length += 1;
     }
+    template[length] = '\0';
+    return (length);
 }
 
-int get_buffer(unsigned int indent, unsigned char *symbols, unsigned char *buff, FILE *file) {
-    if (strlen((const char *) symbols) != 0) {
-        for (unsigned int i = 0; i < indent; i++) {
+int get_buffer(int templateLen, uc *symbols, uc *buff, FILE *in){
+    if (strlen((char *)symbols) != 0)
+    {
+        for (int i = 0; i < templateLen; i++)
+        {
             buff[i] = symbols[i];
         }
     }
-    for (unsigned int i = 0; i < BUFF_SIZE - MAX_SUB_LEN; i++) {
-        unsigned char chr = fgetc(file);
-        if (!feof(file)) {
-            buff[indent + i] = chr;
-        } else {
+    for (int i = 0; i < BUFF_SIZE - TEMPLATE_SIZE; i++)
+    {
+        uc chr = fgetc(in);
+        if (!feof(in))
+        {
+            buff[templateLen + i] = chr;
+        }
+        else
+        {
             return 1;
         }
     }
-    for (unsigned int i = BUFF_SIZE - MAX_SUB_LEN; i < BUFF_SIZE - MAX_SUB_LEN + indent; i++) {
-        symbols[i - BUFF_SIZE + MAX_SUB_LEN] = buff[i];
+    for (int i = BUFF_SIZE - TEMPLATE_SIZE; i < BUFF_SIZE - TEMPLATE_SIZE + templateLen; i++)
+    {
+        symbols[i - BUFF_SIZE + TEMPLATE_SIZE] = buff[i];
     }
     return 0;
 }
 
-void make_prefixes(unsigned char *str, int *prefixes) {
+void make_prefixes(uc *str, int *prefixes){
     int i = 1;
     int j = 0;
-    int len = strlen((const char *) str);
-    while (i < len) {
-        if (str[i] == str[j]) {
+    int len = strlen((const char *)str);
+    while (i < len)
+    {
+        if (str[i] == str[j])
+        {
             prefixes[i] = j + 1;
             i++;
             j++;
-        } else if (j == 0) {
+        }
+        else if (j == 0)
+        {
             prefixes[i] = 0;
             i++;
-        } else {
+        }
+        else
+        {
             j = prefixes[j - 1];
         }
     }
 }
 
-int main() {
+void KMP(FILE *in, int templateLen, int *prefixes, uc *template, uc *remainingSymbols, long *globalIndex){
+    uc buffer[BUFF_SIZE];
+    int index = templateLen;
 
-    FILE *input = fopen("in.txt", "r");
+    while (1)
+    {
+        int flag = get_buffer(templateLen, remainingSymbols, buffer, in);
+        int bufferLen = strlen((char *)buffer + templateLen);
 
-    unsigned char sub_str[MAX_SUB_LEN + 2] = "";
-    get_sub_str(sub_str, input);
-    unsigned int str_length = strlen((const char *) sub_str);
-
-    int prefixes[16] = {0};
-    make_prefixes(sub_str, prefixes);
-
-    for (unsigned int i = 0; i < str_length; i++) {
-        printf("%d ", prefixes[i]);
-    }
-
-    printf("\n");
-    
-    // Broken test in testlab 
-    
-    if (str_length == 13) {
-        int c = 0;
-        unsigned char s[] = "0101230101234";
-        for (int i = 0; i < 13; i++) {
-            if (sub_str[i] == s[i]){
-                c++;
-            }
-        }
-        if (c == 13) {
-            printf("1 4 3 4 5 5 12 2 17 4 19 13 ");
-            return 0;
-        }
-        fclose(input);
-    }
-    //
-    
-    unsigned char buffer[BUFF_SIZE + 2] = "";
-    unsigned int index = str_length;
-    long long global_index = 0;
-    unsigned char last_symbols[MAX_SUB_LEN + 2] = "";
-    int pointer = 0;
-    int moved = 1;
-
-    while (1) {
-        int break_flag = get_buffer(str_length, last_symbols, buffer, input);
-        unsigned int buff_len = strlen((const char *) buffer + str_length);
-
-        while (index <= buff_len) {
-            if (buffer[index] == sub_str[0] && moved && str_length != 0) {
-                unsigned int counter = 0;
-                while (counter < str_length && buffer[index + counter] == sub_str[counter]) {
+        while (index <= bufferLen)
+        {
+            int counter = 0;
+            if (buffer[index + counter] == template[counter])
+            {
+                while (counter < templateLen && buffer[index + counter] == template[counter])
+                {
                     counter++;
                 }
-                printf("%lld %u ", global_index + index - str_length + 1, counter);
-                if (counter == str_length && index + 1 >= buff_len && break_flag) {
-                    break;
-                }
+                printf("%ld %d ", (*globalIndex) + index - templateLen + 1, counter);
             }
-            if (buffer[index] == sub_str[pointer]) {
+            if (counter >= 1)
+            {
+                index += (counter - prefixes[counter - 1]);
+            }
+            else
+            {
                 index++;
-                pointer++;
-                moved = 1;
-            } else {
-                if (pointer == 0) {
-                    index++;
-                    moved = 1;
-                } else {
-                    pointer = prefixes[pointer - 1];
-                    moved = 0;
-                }
             }
         }
-        global_index += BUFF_SIZE - MAX_SUB_LEN;
-        index = index - BUFF_SIZE + MAX_SUB_LEN;
+        (*globalIndex) += BUFF_SIZE - TEMPLATE_SIZE;
+        index = index - BUFF_SIZE + TEMPLATE_SIZE;
         memset(buffer, '\0', BUFF_SIZE);
-
-        if (break_flag) {
+        if (flag)
+        {
             break;
         }
+
+    }
+}
+
+int main(){
+    FILE *in = fopen("in.txt", "r");
+    uc template[TEMPLATE_SIZE];
+
+    int templateLen = read_template(template, in);
+    if (templateLen == 0)
+    {
+        fclose(in);
+        return 0;
     }
 
-    fclose(input);
+    int *prefixes = calloc(templateLen, sizeof(int));
+    make_prefixes(template, prefixes);
+
+    for (int i = 0; i < templateLen; i++)
+    {
+        printf("%d ", prefixes[i]);
+    }
+    printf("\n");
+
+    long globalIndex = 0;
+    uc remainingSymbols[TEMPLATE_SIZE];
+
+    KMP(in, templateLen, prefixes, template, remainingSymbols, &globalIndex);
+
+    fclose(in);
+    free(prefixes);
     return 0;
 }
