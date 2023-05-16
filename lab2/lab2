@@ -8,18 +8,18 @@ void swap(char *a, char *b) {
     *b = tmp;
 }
 
-int bad_input(){
+int bad_input() {
     printf("bad input");
     return 0;
 }
 
-int Check(char *Sequence) {
-    for (int i = 0; Sequence[i]!='\0'; i++) {
-        if (isdigit(Sequence[i]) == 0) {
+int check(char *sequence) {
+    for (int i = 0; sequence[i] != '\0'; i++) {
+        if (isdigit(sequence[i]) == 0) {
             return 0;
         }
-        for (int j = i + 1; Sequence[j]!='\0'; j++) {
-            if (Sequence[i] == Sequence[j]) {
+        for (int j = i + 1; sequence[j] != '\0'; j++) {
+            if (sequence[i] == sequence[j]) {
                 return 0;
             }
         }
@@ -27,37 +27,37 @@ int Check(char *Sequence) {
     return 1;
 }
 
-void reverse(char str[], int Index_Max) {
+void reverse(char str[], int index_Max) {
     int length = strlen(str);
-    for (int first=Index_Max+1, last=length-1; first<last; first++, last--){
-        int buf=str[first];
-        str[first]=str[last];
-        str[last]=buf;
+    for (int first = index_Max + 1, last = length - 1; first < last; first++, last--) {
+        int buf = str[first];
+        str[first] = str[last];
+        str[last] = buf;
     }
 }
 
-int NextPermutation(char *Sequence, int sequence_len) {
-    int Index_Max = sequence_len - 1;
-    int MAX = 0; // Максимальный элемент в массиве, стоящий перед большим элементом
+int next_permutation(char *sequence, int sequence_len) {
+    int index_Max = sequence_len - 1;
+    int MAX = 0;
 
     int perm_counter = 0;
     for (int i = 0; i < sequence_len; ++i) {
-        if ((Sequence[i] < Sequence[i + 1])) {
-            MAX = Sequence[i];
-            Index_Max = i;
+        if ((sequence[i] < sequence[i + 1])) {
+            MAX = sequence[i];
+            index_Max = i;
             perm_counter += 1;
         }
     }
 
     if (perm_counter != 0) {
         int element_after_max = 0;
-        for (int i = Index_Max + 1; i < sequence_len; ++i) {
-            if (Sequence[i] > MAX) {
+        for (int i = index_Max + 1; i < sequence_len; ++i) {
+            if (sequence[i] > MAX) {
                 element_after_max = i;
             }
         }
-        swap(&Sequence[Index_Max], &Sequence[element_after_max]);
-        reverse(Sequence, Index_Max);
+        swap(&sequence[index_Max], &sequence[element_after_max]);
+        reverse(sequence, index_Max);
 
         return 1;
     }
@@ -65,37 +65,36 @@ int NextPermutation(char *Sequence, int sequence_len) {
 }
 
 int main() {
-    char Sequence[100];
-    if (fgets(Sequence, 100, stdin) == NULL) {
+    char sequence[100];
+    if (fgets(sequence, 100, stdin) == NULL) {
         bad_input();
     }
 
-    int flag=1;
+    int flag = 1;
 
-    int sequence_len = strlen(Sequence) - 1;
-    Sequence[sequence_len] = '\0';
+    int sequence_len = strlen(sequence) - 1;
+    sequence[sequence_len] = '\0';
 
     long long N;
     if (scanf("%lld", &N) == 0) {
         return 0;
     }
 
-    if (Check(Sequence)==0){
-        flag=0;
+    if (check(sequence) == 0) {
+        flag = 0;
         bad_input();
     }
 
     if (N < 0) {
-        flag=0;
+        flag = 0;
         bad_input();
     }
 
-    while (N > 0 && flag!=0) {
-        int correct = NextPermutation(Sequence, sequence_len);
+    while (N > 0 && flag != 0) {
+        int correct = next_permutation(sequence, sequence_len);
         if (correct == 1) {
-            printf("%s\n", Sequence);
-            }
-        else{
+            printf("%s\n", sequence);
+        } else {
             break;
         }
         N--;
