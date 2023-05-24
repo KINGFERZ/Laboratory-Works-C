@@ -4,168 +4,186 @@
 
 #define ALPHABET 256
 #define SIZE_OF_BYTE 8
-
 #define MAX_BUFFER_LEN 1000000
 
+typedef unsigned int ui;
 typedef unsigned char uc;
 
 typedef struct huffman_tree{
-    uc val;
-    int frequency;
+    uc symbol;
+    ui weight;
     struct huffman_tree *left;
     struct huffman_tree *right;
 }huffman_tree;
 
-typedef struct queue{
-    huffman_tree *array[ALPHABET];
+typedef struct {
+    huffman_tree *queue[ALPHABET];
     int front;
     int back;
-}priority_queue;
+} priority_queue;
 
-typedef struct data{
+typedef struct {
     uc *buf;
-    unsigned int byte_count;
-    unsigned int bite_count;
-    unsigned int buf_size;
-}data;
+    ui byte_count;
+    ui bite_count;
+    ui bite_size;
+} data;
 
-priority_queue *creation(){
+priority_queue *create_queue() {
     priority_queue *queue = malloc(sizeof(priority_queue));
-    queue->front = -1; // 0
-    queue->back = -1; // 0
+    queue->front = -1;
+    queue->back = -1;
+
     return queue;
 }
 
-void push(priority_queue *queue, huffman_tree *node){
-    if(queue->front == 0 && queue->back == 0){
+void queue_push(priority_queue *queue, huffman_tree *node) {
+    if (queue->front == -1 && queue->back == -1) {
         queue->front++;
         queue->back++;
-        queue->array[queue->front] = node;
-
+        queue->queue[queue->front] = node;
         return;
     }
-    // mb занести как-то всё в один фор
+
     int i;
-    for(i = 0; i < queue->back; i++){
-        if(node->val >= queue->array[i]->val){
-            for(int j = queue->back + 1; j > 1; j--){
-                queue->array[j] = queue->array[j - 1];
+    for (i = 0; i <= queue->back; i++) {
+        if (node->weight >= queue->queue[i]->weight) {
+            for (int j = queue->back + 1; j > i; j--) {
+                queue->queue[j] = queue->queue[j - 1];
             }
-            queue->array[i] = node;
+            queue->queue[i] = node;
             queue->back++;
             return;
         }
     }
     queue->back++;
-    queue->array[i] = node;
+    queue->queue[i] = node;
 }
 
-huffman_tree *pop(priority_queue *queue){
-     return queue->array[queue->back--];
+huffman_tree *queue_pop(priority_queue *queue) {
+    return queue->queue[queue->back--];
 }
 
-huffman_tree *create_node(uc symbol, int frequency, huffman_tree *left, huffman_tree *right){
+huffman_tree *create_huffman_tree(uc symbol, ui weight, huffman_tree *left, huffman_tree *right) {
     huffman_tree *node = malloc(sizeof(huffman_tree));
-    node->val = symbol;
-    node->frequency = frequency;
+
+    node->symbol = symbol;
+    node->weight = weight;
     node->left = left;
     node->right = right;
 
     return node;
 }
 
-void make_huffman_tree(huffman_tree **root, unsigned int *buf){
-    priority_queue *queue = creation();
+void make_huffman_tree(huffman_tree **root, ui *buf) {
+    priority_queue *queue = create_queue();
 
-    for(int i = 0; i < ALPHABET; i++){
-        if(buf[i] != 0){
-            huffman_tree *node = create_node(i, buf[i], NULL, NULL); // null null -> 0 0
-            push(queue, node);
+    for (int i = 0; i < ALPHABET; i++) {
+        if (buf[i] != 0) {
+            queue_push(queue, create_huffman_tree(i, buf[i], 0, 0));
         }
     }
 
-    while((queue->back - queue->front) > 0){
-        huffman_tree *first_node = pop(queue);
-        huffman_tree *second_node = pop(queue);
-        huffman_tree *linked_node = create_node(0, first_node->frequency + second_node->frequency, first_node, second_node);
-        push(queue, linked_node);
+    while ((queue->back - queue->front) > 0) {
+        huffman_tree *first_node = queue_pop(queue);
+        huffman_tree *second_node = queue_pop(queue);
+
+        huffman_tree *linked = create_huffman_tree(0, first_node->weight + second_node->weight, first_node,
+                                                   second_node);
+        queue_push(queue, linked);
     }
 
-    huffman_tree *highest_node = pop(queue);
-    *root = highest_node;
-
+    huffman_tree *tmp = queue_pop(queue);
+    *root = tmp;
     free(queue);
 }
 
-void free_tree(huffman_tree **root){
-    if((*root)->left != NULL){
-        free_tree(&(*root)->left);
-        free_tree(&(*root)->right);
+void free_tree(huffman_tree **root) {
+    if ((*root)->left != NULL) {
+        free_tree((&(*root)->left));
+        free_tree(&((*root)->right));
     }
     free((*root));
-    *root = NULL;
+    (*root) = NULL;
 }
 
-void make_code_table(huffman_tree *root, char **codes, char *current_code){
-    size_t length = strlen(current_code);
+long read_file(ui *stat, FILE *file) {
+    uc current_symbol;
+    long length = 0;
 
-    if(root->left == NULL){
-        codes[root->val] = (char*)malloc(length + 1);
-        strcpy(codes[root->val], current_code);
+    for (int i = 0; i < ALPHABET; i++) {
+        stat[i] = 0;
     }
 
-    else{
+    while (fread(&current_symbol, 1, 1, file)) {
+        stat[current_symbol]++;
+        length++;
+    }
+
+    fseek(file, 1, SEEK_SET);
+    return length;
+}
+
+void make_table(huffman_tree *root, char **codes, char *current_code) {
+    size_t length = strlen(current_code);
+
+    if (root->left == NULL) {
+        codes[root->symbol] = (char *) malloc(length + 1);
+        strcpy(codes[root->symbol], current_code);
+    } else {
         current_code[length] = '0';
         current_code[length + 1] = '\0';
 
-        if(root->left != NULL){
-            make_code_table(root->left, codes, current_code);
+        if (root->left != NULL) {
+            make_table(root->left, codes, current_code);
         }
 
         current_code[length] = '1';
-        current_code[length] = '\0';
+        current_code[length + 1] = '\0';
 
-        if(root->right != NULL){
-            make_code_table(root->right, codes, current_code);
+        if (root->right != NULL) {
+            make_table(root->right, codes, current_code);
         }
     }
 }
 
-void free_table(char **codes){
-    for(int i = 0; i < ALPHABET; i++){
-        free(codes[i]);
+void free_table(char **table) {
+    for (int i = 0; i < ALPHABET; i++) {
+        if (table[i]) {
+            free(table[i]);
+        }
     }
 }
 
-void data_init(data *data, unsigned int byte_count){
-    data->buf_size = byte_count;
-    data->bite_count = 8;
+void init_data(data *data, ui byte_count) {
+    data->bite_size = byte_count;
+    data->bite_count = SIZE_OF_BYTE;
     data->byte_count = 0;
-    data->buf = (uc*)malloc(byte_count * sizeof(uc));
-    for(int i = 0; i < byte_count; i++) {
+    data->buf = (uc *) malloc(byte_count * sizeof(uc));
+
+    for (ui i = 0; i < byte_count; i++) {
         data->buf[i] = 0;
     }
 }
 
-void bit_writing_to_file(FILE *file, data *data, uc bit){
+void bit_writing(FILE *file, data *data, uc bit) {
     data->buf[data->byte_count] |= ((bit - '0') << (data->bite_count - 1));
     data->bite_count--;
-
-    if(data->bite_count == 0){
+    if (data->bite_count == 0) {
         fwrite(&data->buf[data->byte_count], sizeof(uc), 1, file);
-        data->bite_count = 8;
+        data->bite_count = SIZE_OF_BYTE;
         data->buf[data->byte_count] = 0;
     }
 }
 
 int unpack_bit(data *data, uc *bit) {
-    if (data->byte_count < data->buf_size) {
+    if (data->byte_count < data->bite_size) {
         *bit = (data->buf[data->byte_count] >> (data->bite_count - 1)) & 1;
         data->bite_count--;
 
         if (data->bite_count == 0) {
             data->byte_count++;
-            data->bite_count = 8;
+            data->bite_count = SIZE_OF_BYTE;
         }
         return 0;
     } else {
@@ -173,159 +191,142 @@ int unpack_bit(data *data, uc *bit) {
     }
 }
 
-void unpack_byte(data *data, uc *byte){
-    *byte = data->buf[data->byte_count] << (8 - data->bite_count);
+void unpack_byte(data *data, uc *byte) {
+    *byte = data->buf[data->byte_count] << (SIZE_OF_BYTE - data->bite_count);
     data->byte_count++;
     *byte |= data->buf[data->byte_count] >> data->bite_count;
 }
 
-uc unpack_char(FILE *file, huffman_tree *root, data *data){
-    if(root->left != NULL){
-        uc bit = 0;
-        if(unpack_bit(data, &bit) == 0) {
-            if(fread(data->buf,1,MAX_BUFFER_LEN, file)){}
+uc unpacking_char(FILE *file, huffman_tree *root, data *data) {
+    if (root->left != NULL) {
+        unsigned char bit = 0;
+        if (unpack_bit(data, &bit) != 0) {
+            if (fread(data->buf, 1, MAX_BUFFER_LEN, file)) {}
             data->byte_count = 0;
             unpack_bit(data, &bit);
         }
-        if(bit){
-            return unpack_char(file, root->right, data);
+
+        if (bit != 0) {
+            return unpacking_char(file, root->right, data);
+        } else {
+            return unpacking_char(file, root->left, data);
         }
-        else{
-            return unpack_char(file, root->left, data);
-        }
-    }
-    else{
-        return root->val;
+    } else {
+        return root->symbol;
     }
 }
 
-void pack_huffman_tree(FILE *file, data *data, huffman_tree *root){
-    if (root->left == 0) {
-        bit_writing_to_file(file, data, '0');
-        for (int i = 0; i < SIZE_OF_BYTE; i++){
-            bit_writing_to_file(file, data, ((root->val) >> (7 - i) & 1) + '0');
+void pack_huffman_tree(FILE *file, data *data, huffman_tree *root) {
+    if (root->left == NULL) {
+        bit_writing(file, data, '0');
+        for (int i = 0; i < SIZE_OF_BYTE; i++) {
+            bit_writing(file, data, ((root->symbol) >> (7 - i) & 1) + '0');
         }
-
     } else {
-        bit_writing_to_file(file, data, '1');
+        bit_writing(file, data, '1');
         pack_huffman_tree(file, data, root->left);
         pack_huffman_tree(file, data, root->right);
     }
 }
 
-void unpack_huffman_tree(data *data, huffman_tree **root){
-    *root = (huffman_tree*)malloc(sizeof(huffman_tree));
-    (*root)->frequency = 0;
-    uc bit = 0, symbol;
+void unpack_huffman_tree(data *data, huffman_tree **root) {
+    *root = (huffman_tree *) malloc(sizeof(huffman_tree));
+    (*root)->weight = 0;
+
+    uc bit = 0;
     unpack_bit(data, &bit);
 
-    if(bit == 0){
-        (*root)->val = 0;
+    if (bit != 0) {
+        (*root)->symbol = 0;
         unpack_huffman_tree(data, &((*root)->left));
         unpack_huffman_tree(data, &((*root)->right));
-    }
-    else{
-        (*root)->left = 0;
-        (*root)->right = 0;
-
+    } else {
+        (*root)->left = 0, (*root)->right = 0;
+        uc symbol;
         unpack_byte(data, &symbol);
-        (*root)->val = symbol;
+        (*root)->symbol = symbol;
     }
 }
 
-long reading_input_file(FILE *input, unsigned int *buf){
-    uc symbol;
-    long length = 0;
+void encode(FILE *in, FILE *out) {
 
-    for(int i = 0; i < ALPHABET; i++){
-        buf[i] = 0;
-    }
+    ui table_frequency[ALPHABET];
+    long text_length = read_file(table_frequency, in);
 
-    while(fread(&symbol, 1, 1, input) != EOF){
-        buf[symbol]++;
-        length++;
-    }
-    fseek(input,1, SEEK_SET); // SEEK SET - начало файла, но вроде 0 делает то же самое ORIGIN
-
-    return length;
-}
-
-void encode(FILE *input, FILE *out){
-    unsigned int frequency_table[ALPHABET];
-    long text_length = reading_input_file(input, frequency_table);
-
-    if(text_length == 0){
+    if (text_length == 0) {
         return;
     }
 
     huffman_tree *root;
-    make_huffman_tree(&root, frequency_table);
+    make_huffman_tree(&root, table_frequency);
+
     char *codes[ALPHABET] = {NULL};
     char current_code[ALPHABET] = {0};
-    make_code_table(root, codes, current_code);
-
+    make_table(root, codes, current_code);
     fwrite(&(text_length), 4, 1, out);
+
     data data;
-    data_init(&data, 1);
+    init_data(&data, 1);
     pack_huffman_tree(out, &data, root);
 
-    for(long i = 0; i < text_length; i++){
+    for (long i = 0; i < text_length; i++) {
         uc c;
-        if(fread(&c, 1, 1, input)){
-            for(unsigned int j = 0; j < strlen(codes[c]); j++){
-                bit_writing_to_file(out, &data, codes[c][j]);
-            }
+        if (fread(&c, 1, 1, in)) {}
+        for (ui j = 0; j < strlen(codes[c]); j++) {
+            bit_writing(out, &data, codes[c][j]);
         }
     }
 
-    if(data.bite_count != SIZE_OF_BYTE){
-        fwrite(&(data.buf[data.byte_count]), 1 ,1, out);
+    if (data.bite_count != SIZE_OF_BYTE) {
+        fwrite(&(data.buf[data.byte_count]), 1, 1, out);
     }
+
     free(data.buf);
     free_tree(&root);
     free_table(codes);
 }
 
-void decode(FILE *input, FILE *out){
+void decode(FILE *file, FILE *out) {
     huffman_tree *root;
-    unsigned int num_of_encoded = 0;
-    data data;
-    data_init(&data, MAX_BUFFER_LEN);
+    ui num_of_encoded = 0;
 
-    if(fread(&num_of_encoded, 4, 1, input)){}
-    if(fread(data.buf, 1, MAX_BUFFER_LEN, input)) {}
+    data data;
+    init_data(&data, MAX_BUFFER_LEN);
+
+    if (fread(&num_of_encoded, 4, 1, file)) {}
+    if (fread(data.buf, 1, MAX_BUFFER_LEN, file)) {}
 
     unpack_huffman_tree(&data, &root);
 
-    for(unsigned long i = 0; i < num_of_encoded; i++){
-        uc symbol = unpack_char(input, root, &data);
-        fwrite(&symbol,1,1,out);
+    for (unsigned long i = 0; i < num_of_encoded; i++) {
+        uc symbol = unpacking_char(file, root, &data);
+        fwrite(&symbol, 1, 1, out);
     }
+
     free(data.buf);
     free_tree(&root);
 }
 
-int main(){
-    FILE *input = fopen("in.txt", "r");
-    FILE *output = fopen("out.txt", "w");
+int main() {
+    uc mode;
 
-    uc mode = fread(&mode,1, 1, input);
+    FILE *in = fopen("in.txt", "r");
+    FILE *out = fopen("out.txt", "w");
 
-    switch (mode)
-    {
-        case 'c':{
-            encode(input, output);
+    if (fread(&mode, 1, 1, in)) {}
+
+    switch (mode) {
+        case 'c':
+            encode(in, out);
             break;
-        }
-        case 'd':{
-            decode(input, output);
+        case 'd':
+            decode(in, out);
             break;
-        }
         default:
             return 0;
     }
-    fclose(input);
-    fclose(output);
 
+    fclose(in);
+    fclose(out);
     return 0;
 }
