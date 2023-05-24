@@ -316,14 +316,19 @@ int main() {
     if (fread(&mode, 1, 1, in)) {}
 
     switch (mode) {
-        case 'c':
+        case 'c': {
             encode(in, out);
             break;
-        case 'd':
+        }
+        case 'd': {
             decode(in, out);
             break;
-        default:
+        }
+        default: {
+            fclose(in);
+            fclose(out);
             return 0;
+        }
     }
 
     fclose(in);
