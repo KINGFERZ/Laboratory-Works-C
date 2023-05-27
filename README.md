@@ -1,4 +1,4 @@
-TOTAL PROGRESS 18/19
+TOTAL PROGRESS 19/19
 
 begin lab – Sum of array elements
 
